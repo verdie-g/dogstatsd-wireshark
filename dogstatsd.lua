@@ -45,6 +45,7 @@ function dogstatsd_protocol.dissector(buf, pinfo, tree)
   pinfo.cols.protocol = dogstatsd_protocol.name -- set protocol column
 
   local subtree = tree:add(dogstatsd_protocol, buf(), "DogStatsD Protocol")
+  local count = 0
   local idx = 0
 
   for msg in string.gmatch(buf:raw(), "[^\n]+") do
@@ -60,8 +61,11 @@ function dogstatsd_protocol.dissector(buf, pinfo, tree)
       dissect_metric(msg_buf, metric_tree)
     end
 
+    count = count + 1
     idx = idx + msg:len() + 1 -- + 1 for \n
   end
+
+  pinfo.cols.info = "Msg=" .. count .. " Len=" .. buf:len()
 end
 
 -- _e{<TITLE>.length,<TEXT>.length}:<TITLE>|<TEXT>|d:<TIMESTAMP>|h:<HOSTNAME>|p:<PRIORITY>|t:<ALERT_TYPE>|#<TAG_KEY_1>:<TAG_VALUE_1>,<TAG_2>
