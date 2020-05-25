@@ -44,7 +44,7 @@ dogstatsd_protocol.fields = {
 function dogstatsd_protocol.dissector(buf, pinfo, tree)
   pinfo.cols.protocol = dogstatsd_protocol.name -- set protocol column
 
-  local subtree = tree:add(dogstatsd_protocol, buf(), "DogStatsD Protocol Data")
+  local subtree = tree:add(dogstatsd_protocol, buf(), "DogStatsD Protocol")
   local idx = 0
 
   for msg in string.gmatch(buf:raw(), "[^\n]+") do
