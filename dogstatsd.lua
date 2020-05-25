@@ -19,7 +19,7 @@ metric_sampling = ProtoField.double("dogstatsd.metric.sampling", "Sampling")
 
 time = ProtoField.absolute_time("dogstatsd.time", "Time", base.LOCAL)
 hostname = ProtoField.string("dogstatsd.hostname", "Hostname")
-tags = ProtoField.string("dogstatsd.tags", "Tags")
+tag = ProtoField.string("dogstatsd.tag", "Tag")
 
 dogstatsd_protocol.fields = {
   event_title,
@@ -35,7 +35,7 @@ dogstatsd_protocol.fields = {
   metric_sampling,
   time,
   hostname,
-  tags
+  tag
 }
 
 -- buf packet's buffer (https://www.wireshark.org/docs/wsdg_html_chunked/lua_module_Tvb.html#lua_class_Tvb)
@@ -84,7 +84,7 @@ function dissect_event(buf, tree)
     elseif section_type == "h" then tree:add(hostname, section_buf(2), section_buf(2):string())
     elseif section_type == "p" then tree:add(event_priority, section_buf(2), section_buf(2):string())
     elseif section_type == "t" then tree:add(event_alert_type, section_buf(2), section_buf(2):string())
-    elseif section_type == "#" then tree:add(tags, section_buf(1), section_buf(1):string())
+    elseif section_type == "#" then dissect_tags(section_buf(1), tree)
     end
 
     idx = idx + 1 + section:len() -- +1 for |
@@ -109,7 +109,7 @@ function dissect_service_check(buf, tree)
       local nstime = timestamp_to_nstime(section_buf(2):string())
       tree:add(time, section_buf(2), nstime)
     elseif section_type == "h" then tree:add(hostname, section_buf(2), section_buf(2):string())
-    elseif section_type == "#" then tree:add(tags, section_buf(1), section_buf(1):string())
+    elseif section_type == "#" then dissect_tags(section_buf(1), tree)
     elseif section_type == "m" then tree:add(service_check_msg, section_buf(2), section_buf(2):string())
     end
 
@@ -134,10 +134,18 @@ function dissect_metric(buf, tree)
     local section_buf = buf(idx + 1, section:len()) -- +1 for |
     local section_type = string.sub(section, 1, 1)
     if section_type == "@" then tree:add(metric_sampling, section_buf(1), tonumber(section_buf(1):string()))
-    elseif section_type == "#" then tree:add(tags, section_buf(1), section_buf(1):string())
+    elseif section_type == "#" then dissect_tags(section_buf(1), tree)
     end
 
     idx = idx + 1 + section:len() -- +1 for |
+  end
+end
+
+function dissect_tags(buf, tree)
+  local idx = 0
+  for tag_str in string.gmatch(buf:string(), "[^,]+") do
+    tree:add(tag, buf(idx, tag_str:len()), buf(idx, tag_str:len()):string())
+    idx = idx + tag_str:len() + 1 -- +1 for ,
   end
 end
 
